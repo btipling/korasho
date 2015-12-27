@@ -1,0 +1,4 @@
+[package]
+name = "korasho"
+version = "0.1.0"
+authors = ["Bjorn Tipling <bjorn@ambientchill.com>"]
