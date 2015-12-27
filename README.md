@@ -1,0 +1,2 @@
+# korasho
+learning rust 
