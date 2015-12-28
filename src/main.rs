@@ -1,14 +1,14 @@
 extern crate toml;
 
-
 use std::fs::File;
 use std::env;
 use std::env::Args;
 use std::io::prelude::*;
 use std::net::TcpStream;
 use std::str;
+use toml::Value;
 
-struct Config<'a> {
+struct Server<'a> {
     host: & 'a str,
     port: u16,
 }
@@ -21,8 +21,50 @@ fn read_file_name(args: &mut Args) -> String {
     };
 }
 
-fn read_config(filename: &String) {
+fn read_config(filename: &String) -> String {
     println!("reading config! {filename}", filename=filename);
+    let mut input = String::new();
+    let res = File::open(&filename).and_then(|mut f| {
+        f.read_to_string(&mut input)
+    });
+    match res {
+        Err(e) => panic!("Unable to open config file: {}", e),
+        _ => {},
+    };
+    let new_input = input.clone();
+    let mut parser = toml::Parser::new(&new_input);
+    let toml = match parser.parse() {
+        Some(toml) => toml,
+        None => {
+            for err in &parser.errors {
+                let (loline, locol) = parser.to_linecol(err.lo);
+                let (hiline, hicol) = parser.to_linecol(err.hi);
+                println!("{}:{}:{}-{}:{} error: {}",
+                filename, loline, locol, hiline, hicol, err.desc);
+            }
+            panic!("Unable to read config file. Is it proper toml?")
+        }
+    };
+    let toml_servers = Value::Table(toml);
+    let toml_servers = toml_servers.lookup("servers");
+    let toml_servers = match toml_servers {
+        None => panic!("Unable to find any servers in config!"),
+        s => s.unwrap(),
+    };
+    let toml_servers = match *toml_servers {
+        Value::Array(ref s) => s,
+        _ => panic!("Config needs to be an array of servers!"),
+    };
+    let toml_servers = toml_servers.clone();
+    println!("=========");
+    let toml_servers = toml_servers.into_iter();
+    println!("num servers: {}", toml_servers.len());
+    for k in toml_servers {
+        println!("iter! {}", k);
+    }
+    println!("###########");
+    //let mut servers: [Server; toml_servers.len()];
+    input
 }
 
 fn main() {
@@ -30,8 +72,8 @@ fn main() {
 
     let filename = read_file_name(&mut env::args());
     println!("Using config in {filename}", filename=filename);
-    read_config(&filename);
-    //let config = read_config(filename);
+    let config = read_config(&filename);
+    println!("Got config: {config}", config=config);
     //println!("Using config with values: {host} {port}", host=config.host, port=config.port);
     let host = "chat.freenode.net";
     let port = "6667";
