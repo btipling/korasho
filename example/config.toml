@@ -1,0 +1,7 @@
+[[servers]]
+host = "chat.freenode.net"
+port = 6667
+
+[[servers]]
+host = "irc.mozilla.org"
+port = 6667
