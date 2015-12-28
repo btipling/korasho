@@ -14,11 +14,15 @@ struct Config<'a> {
 }
 
 fn read_file_name(args: &mut Args) -> String {
-    let filename = if args.len() > 1 {
+    if args.len() > 1 {
         return args.nth(1).unwrap();
     } else {
         panic!("Need a config file path!");
     };
+}
+
+fn read_config(filename: &String) {
+    println!("reading config! {filename}", filename=filename);
 }
 
 fn main() {
@@ -26,7 +30,8 @@ fn main() {
 
     let filename = read_file_name(&mut env::args());
     println!("Using config in {filename}", filename=filename);
-    //let config = readConfig(filename);
+    read_config(&filename);
+    //let config = read_config(filename);
     //println!("Using config with values: {host} {port}", host=config.host, port=config.port);
     let host = "chat.freenode.net";
     let port = "6667";
