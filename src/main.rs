@@ -2,15 +2,23 @@ extern crate toml;
 
 use std::fs::File;
 use std::env;
+use std::fmt;
 use std::env::Args;
 use std::io::prelude::*;
 use std::net::TcpStream;
 use std::str;
 use toml::Value;
 
-struct Server<'a> {
-    host: & 'a str,
+struct Server {
+    host: String,
     port: u16,
+}
+
+
+impl fmt::Display for Server {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.host, self.port)
+    }
 }
 
 fn read_file_name(args: &mut Args) -> String {
@@ -21,7 +29,7 @@ fn read_file_name(args: &mut Args) -> String {
     };
 }
 
-fn read_config(filename: &String) -> String {
+fn read_config(filename: &String) -> Vec<Server> {
     println!("reading config! {filename}", filename=filename);
     let mut input = String::new();
     let res = File::open(&filename).and_then(|mut f| {
@@ -55,16 +63,36 @@ fn read_config(filename: &String) -> String {
         Value::Array(ref s) => s,
         _ => panic!("Config needs to be an array of servers!"),
     };
-    let toml_servers = toml_servers.clone();
     println!("=========");
     let toml_servers = toml_servers.into_iter();
-    println!("num servers: {}", toml_servers.len());
+    let mut servers = Vec::new();
     for k in toml_servers {
-        println!("iter! {}", k);
+        let toml_server = match *k {
+            Value::Table(ref s) => s,
+            _ => panic!("Servers need to be a table!"),
+        };
+        let host = match toml_server.get("host") {
+            Some(h) => h,
+            None => panic!("host needs to exist!"),
+        };
+        let host = match *host {
+            Value::String(ref s) => s,
+            _ => panic!("host needs to be a string!"),
+        };
+        let port = match toml_server.get("port") {
+            Some(p) => p,
+            None => panic!("port needs to be a number!"),
+        };
+        let port = match *port {
+            Value::Integer(ref s) => s,
+            ref s => panic!("port needs to be an integer: {}", s),
+        };
+        let port: u16 = *port as u16;
+        println!("found address: {host}:{port}", host=host, port=port);
+        servers.push(Server { host: host.clone(), port: port })
     }
     println!("###########");
-    //let mut servers: [Server; toml_servers.len()];
-    input
+    servers
 }
 
 fn main() {
@@ -73,7 +101,7 @@ fn main() {
     let filename = read_file_name(&mut env::args());
     println!("Using config in {filename}", filename=filename);
     let config = read_config(&filename);
-    println!("Got config: {config}", config=config);
+    println!("Got config: {config}", config=config[0]);
     //println!("Using config with values: {host} {port}", host=config.host, port=config.port);
     let host = "chat.freenode.net";
     let port = "6667";
