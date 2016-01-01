@@ -63,7 +63,6 @@ fn read_config(filename: &String) -> Vec<Server> {
         Value::Array(ref s) => s,
         _ => panic!("Config needs to be an array of servers!"),
     };
-    println!("=========");
     let toml_servers = toml_servers.into_iter();
     let mut servers = Vec::new();
     for k in toml_servers {
@@ -91,7 +90,6 @@ fn read_config(filename: &String) -> Vec<Server> {
         println!("found address: {host}:{port}", host=host, port=port);
         servers.push(Server { host: host.clone(), port: port })
     }
-    println!("###########");
     servers
 }
 
@@ -100,12 +98,14 @@ fn main() {
 
     let filename = read_file_name(&mut env::args());
     println!("Using config in {filename}", filename=filename);
-    let config = read_config(&filename);
-    println!("Got config: {config}", config=config[0]);
-    //println!("Using config with values: {host} {port}", host=config.host, port=config.port);
-    let host = "chat.freenode.net";
-    let port = "6667";
-    let address = format!("{host}:{port}", host=host, port=port).to_string();
+    let servers = read_config(&filename);
+    if servers.len() < 1 {
+        println!("Found no servers. :/");
+        return;
+    }
+    let first_server = &servers[0];
+    println!("Got server: {server}", server=first_server);
+    let address = format!("{host}:{port}", host=first_server.host, port=first_server.port).to_string();
 
     let mut stream = TcpStream::connect(&*address).unwrap();
 
