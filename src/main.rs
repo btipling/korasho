@@ -80,7 +80,7 @@ fn read_config(filename: &String) -> Vec<Server> {
         };
         let port = match toml_server.get("port") {
             Some(p) => p,
-            None => panic!("port needs to be a number!"),
+            None => panic!("port needs to exist!"),
         };
         let port = match *port {
             Value::Integer(ref s) => s,
