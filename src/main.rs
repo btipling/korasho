@@ -12,6 +12,7 @@ use toml::Value;
 struct Server {
     host: String,
     port: u16,
+    secure: bool,
 }
 
 
@@ -71,24 +72,32 @@ fn read_config(filename: &String) -> Vec<Server> {
             _ => panic!("Servers need to be a table!"),
         };
         let host = match toml_server.get("host") {
-            Some(h) => h,
+            Some(h) => h.clone(),
             None => panic!("host needs to exist!"),
         };
-        let host = match *host {
-            Value::String(ref s) => s,
+        let host = match host {
+            Value::String(s) => s,
             _ => panic!("host needs to be a string!"),
         };
         let port = match toml_server.get("port") {
-            Some(p) => p,
+            Some(p) => p.clone(),
             None => panic!("port needs to exist!"),
         };
-        let port = match *port {
-            Value::Integer(ref s) => s,
+        let port = match port {
+            Value::Integer(s) => s,
             ref s => panic!("port needs to be an integer: {}", s),
         };
-        let port: u16 = *port as u16;
-        println!("found address: {host}:{port}", host=host, port=port);
-        servers.push(Server { host: host.clone(), port: port })
+        let secure: Value = match toml_server.get("secure") {
+            Some(s) => s.clone(),
+            None => Value::Boolean(false),
+        };
+        let secure = match secure {
+            Value::Boolean(s) => s,
+            _ => false,
+        };
+        let port: u16 = port as u16;
+        println!("found address: {host}:{port} {secure}", host=host, port=port, secure=secure);
+        servers.push(Server { host: host.clone(), port: port, secure: secure })
     }
     servers
 }
