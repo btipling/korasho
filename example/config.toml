@@ -1,6 +1,6 @@
 [[servers]]
 host = "chat.freenode.net"
-port = 6667
+port = 6697
 secure = true
 
 [[servers]]

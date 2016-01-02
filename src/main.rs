@@ -1,4 +1,5 @@
 extern crate toml;
+extern crate openssl;
 
 use std::fs::File;
 use std::env;
@@ -6,6 +7,7 @@ use std::fmt;
 use std::env::Args;
 use std::io::prelude::*;
 use std::net::TcpStream;
+use openssl::ssl::{SslMethod, SslContext, SslStream};
 use std::str;
 use toml::Value;
 
@@ -102,22 +104,32 @@ fn read_config(filename: &String) -> Vec<Server> {
     servers
 }
 
-fn main() {
-    println!("Starting");
+fn connect(server: Server) {
+    let address = format!("{host}:{port}", host=server.host, port=server.port).to_string();
 
-    let filename = read_file_name(&mut env::args());
-    println!("Using config in {filename}", filename=filename);
-    let servers = read_config(&filename);
-    if servers.len() < 1 {
-        println!("Found no servers. :/");
-        return;
+    let mut stream = match TcpStream::connect(&*address) {
+        Ok(ok) => ok,
+        Err(err) => {
+            println!("Could not connect to {address} due to {err}", address=address, err=err);
+            return;
+        }
+    };
+    if server.secure {
+        let method = SslMethod.Sslv23;
+        let stream = match SslStream::try_new(&SslContext::new(method), stream) {
+            Ok(s) => s,
+            Err(err) => {
+                println!("Could not connect to secure {address} due to {err}",
+                         address=address, err=err);
+                return;
+            }
+        };
+        handle_connection(&mut stream);
     }
-    let first_server = &servers[0];
-    println!("Got server: {server}", server=first_server);
-    let address = format!("{host}:{port}", host=first_server.host, port=first_server.port).to_string();
+    handle_connection(&mut stream);
+}
 
-    let mut stream = TcpStream::connect(&*address).unwrap();
-
+fn handle_connection<T: Read + Write>(stream: &mut T) {
     let _ = stream.write(&[1]);
     let mut buf = [0; 128];
     loop {
@@ -125,6 +137,21 @@ fn main() {
         let result_str = str::from_utf8(&buf).unwrap();
         process_data(result, &result_str);
     }
+}
+
+fn main() {
+    println!("Starting {}");
+
+    let filename = read_file_name(&mut env::args());
+    println!("Using config in {filename}", filename=filename);
+    let mut servers = read_config(&filename);
+    if servers.len() < 1 {
+        println!("Found no servers. :/");
+        return;
+    }
+    let first_server = servers.remove(0);
+    println!("Got server: {server}", server=first_server);
+    connect(first_server);
 }
 
 fn process_data(result_size: usize, result_str: &str) {
