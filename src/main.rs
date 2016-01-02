@@ -4,6 +4,7 @@ extern crate openssl;
 use std::fs::File;
 use std::env;
 use std::fmt;
+use std::thread;
 use std::env::Args;
 use std::io::prelude::*;
 use std::net::TcpStream;
@@ -105,6 +106,7 @@ fn read_config(filename: &String) -> Vec<Server> {
 }
 
 fn connect(server: Server) {
+    println!("Connecting to: {server}", server=server);
     let address = format!("{host}:{port}", host=server.host, port=server.port).to_string();
 
     let mut stream = match TcpStream::connect(&*address) {
@@ -146,14 +148,21 @@ fn main() {
 
     let filename = read_file_name(&mut env::args());
     println!("Using config in {filename}", filename=filename);
-    let mut servers = read_config(&filename);
+    let servers = read_config(&filename);
     if servers.len() < 1 {
         println!("Found no servers. :/");
         return;
     }
-    let first_server = servers.remove(0);
-    println!("Got server: {server}", server=first_server);
-    connect(first_server);
+
+    let handles: Vec<_> = servers.into_iter().map(|server| {
+        thread::spawn(move || {
+            connect(server);
+        })
+    }).collect();
+
+    for h in handles {
+        h.join().unwrap();
+    }
 }
 
 fn process_data(result_size: usize, result_str: &str) {
