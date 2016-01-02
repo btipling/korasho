@@ -1,5 +1,3 @@
-extern crate toml;
-
 use std::fs::File;
 use std::io::prelude::*;
 use std::fmt;
@@ -29,9 +27,9 @@ pub fn read_config(filename: &String) -> Vec<Server> {
         _ => {},
     };
     let new_input = input.clone();
-    let mut parser = toml::Parser::new(&new_input);
-    let toml = match parser.parse() {
-        Some(toml) => toml,
+    let mut parser = ::toml::Parser::new(&new_input);
+    let rawtoml = match parser.parse() {
+        Some(rawtoml) => rawtoml,
         None => {
             for err in &parser.errors {
                 let (loline, locol) = parser.to_linecol(err.lo);
@@ -42,7 +40,7 @@ pub fn read_config(filename: &String) -> Vec<Server> {
             panic!("Unable to read config file. Is it proper toml?")
         }
     };
-    let toml_servers = Value::Table(toml);
+    let toml_servers = Value::Table(rawtoml);
     let toml_servers = toml_servers.lookup("servers");
     let toml_servers = match toml_servers {
         None => panic!("Unable to find any servers in config!"),
