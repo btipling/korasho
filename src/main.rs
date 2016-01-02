@@ -7,7 +7,7 @@ use std::fmt;
 use std::env::Args;
 use std::io::prelude::*;
 use std::net::TcpStream;
-use openssl::ssl::{SslMethod, SslContext, SslStream};
+use openssl::ssl::{Ssl, SslContext, SslMethod, SslStream};
 use std::str;
 use toml::Value;
 
@@ -115,8 +115,9 @@ fn connect(server: Server) {
         }
     };
     if server.secure {
-        let method = SslMethod.Sslv23;
-        let stream = match SslStream::try_new(&SslContext::new(method), stream) {
+        let context = SslContext::new(SslMethod::Sslv23).unwrap();
+        let ssl = Ssl::new(&context).unwrap();
+        let mut ssl_stream = match SslStream::connect(ssl, stream) {
             Ok(s) => s,
             Err(err) => {
                 println!("Could not connect to secure {address} due to {err}",
@@ -124,7 +125,8 @@ fn connect(server: Server) {
                 return;
             }
         };
-        handle_connection(&mut stream);
+        handle_connection(&mut ssl_stream);
+        return;
     }
     handle_connection(&mut stream);
 }
@@ -140,7 +142,7 @@ fn handle_connection<T: Read + Write>(stream: &mut T) {
 }
 
 fn main() {
-    println!("Starting {}");
+    println!("Starting");
 
     let filename = read_file_name(&mut env::args());
     println!("Using config in {filename}", filename=filename);
