@@ -24,13 +24,13 @@ fn main() {
 
     let filename = read_file_name(&mut env::args());
     println!("Using config in {filename}", filename=filename);
-    let servers = config::read_config(&filename);
-    if servers.len() < 1 {
+    let config = config::read_config(&filename);
+    if config.servers.len() < 1 {
         println!("Found no servers. :/");
         return;
     }
 
-    let handles: Vec<_> = servers.into_iter().map(|server| {
+    let handles: Vec<_> = config.servers.into_iter().map(|server| {
         thread::spawn(move || {
             let connection = match connection::connect(server.clone()) {
                 Ok(s) => s,
