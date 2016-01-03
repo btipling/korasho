@@ -4,6 +4,7 @@ extern crate toml;
 use std::env;
 use std::thread;
 use std::env::Args;
+use std::str;
 
 mod config;
 mod irc;
@@ -31,14 +32,7 @@ fn main() {
 
     let handles: Vec<_> = servers.into_iter().map(|server| {
         thread::spawn(move || {
-            let mut connection = match connect::connect(server) {
-                Ok(s) => s,
-                Err(err) => {
-                    println!("Could not connect to secure {server} due to {err}",
-                             server=server, err=err);
-                    return;
-                }
-            };
+            let mut connection = connect::connect(server);
             handle_connection(&mut connection);
         })
     }).collect();
@@ -48,7 +42,7 @@ fn main() {
     }
 }
 
-fn handle_connection<T: connect::Connection>(stream: &mut T) {
+fn handle_connection(stream: &mut connect::Connection) {
     let _ = stream.write(&[1]);
     let mut buf = [0; 128];
     loop {
