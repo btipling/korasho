@@ -16,6 +16,16 @@ impl fmt::Display for Server {
     }
 }
 
+impl Clone for Server {
+    fn clone(&self) -> Server {
+        return Server {
+            host: self.host.clone(),
+            port: self.port,
+            secure: self.secure,
+        }
+    }
+}
+
 pub fn read_config(filename: &String) -> Vec<Server> {
     println!("reading config! {filename}", filename=filename);
     let mut input = String::new();

@@ -32,8 +32,14 @@ fn main() {
 
     let handles: Vec<_> = servers.into_iter().map(|server| {
         thread::spawn(move || {
-            let mut connection = connect::connect(server);
-            handle_connection(&mut connection);
+            let connection = match connect::connect(server.clone()) {
+                Ok(s) => s,
+                Err(err) => {
+                    println!("Could not connect to {server}: {err}", server=server, err=err);
+                    return;
+                },
+            };
+            handle_connection(connection);
         })
     }).collect();
 
@@ -42,11 +48,11 @@ fn main() {
     }
 }
 
-fn handle_connection(stream: &mut connect::Connection) {
-    let _ = stream.write(&[1]);
+fn handle_connection(mut connection: connect::Connection) {
+    let _ = connection.write(&[1]);
     let mut buf = [0; 128];
     loop {
-        let result = stream.read(&mut buf).unwrap(); // ignore here too
+        let result = connection.read(&mut buf).unwrap(); // ignore here too
         let result_str = str::from_utf8(&buf).unwrap();
         process_data(result, &result_str);
     }
