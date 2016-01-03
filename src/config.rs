@@ -70,17 +70,23 @@ pub fn read_config(filename: &String) -> Config {
     for k in toml_servers {
         let toml_server = match *k {
             Value::Table(ref s) => s,
-            _ => panic!("Servers need to be a table!"),
+            _ => continue,
         };
-        let host = match read_string(toml_server, "host") {
+        let host = match get_var(toml_server, "host").and_then(|v| as_string(v)) {
             Ok(h) => h,
-            Err(err) => panic!("host needs to exist: {err}!", err=err),
+            Err(err) => {
+                println!("Skipping a server: {err}", err=err);
+                continue;
+            }
         };
-        let port = match read_integer(toml_server, "port") {
+        let port = match get_var(toml_server, "port").and_then(|v| as_integer(v)) {
             Ok(p) => p,
-            Err(err) => panic!("port needs to exist: {err}!", err=err),
+            Err(err) => {
+                println!("Skipping a server: {err}", err=err);
+                continue;
+            }
         };
-        let secure = match read_bool(toml_server, "secure") {
+        let secure = match get_var(toml_server, "secure").and_then(|v| as_bool(v)) {
             Ok(s) => s,
             _ => false,
         };
@@ -91,35 +97,27 @@ pub fn read_config(filename: &String) -> Config {
     Config {servers: servers}
 }
 
-fn read_string(server: &BTreeMap<String, Value>, name: &str) -> Result<String, String> {
-    let str = match server.get(name) {
-        Some(s) => s.clone(),
-        None => return Err(format!("{name} was not found.", name=name)),
-    };
-    match str {
-        Value::String(s) => return Ok(s),
-        _ => return Err(format!("{name} is not a string.", name=name)),
+fn as_string(value: &Value) -> Result<String, String> {
+    match value {
+        &Value::String(ref s) => return Ok(s.clone()),
+        _ => return Err(format!("Not a string.")),
     };
 }
 
-fn read_integer(server: &BTreeMap<String, Value>, name: &str) -> Result<i64, String> {
-    let int = match server.get(name) {
-        Some(i) => i.clone(),
-        None => return Err(format!("{name} was not found.", name=name)),
-    };
-    match int {
-        Value::Integer(i) => return Ok(i),
-        _ => return Err(format!("{name} is not a integer.", name=name)),
+fn as_integer(value: &Value) -> Result<i64, String> {
+    match value {
+        &Value::Integer(i) => return Ok(i),
+        _ => return Err(format!("Not an integer.")),
     };
 }
 
-fn read_bool(server: &BTreeMap<String, Value>, name: &str) -> Result<bool, String> {
-    let boolean = match server.get(name) {
-        Some(b) => b.clone(),
-        None => return Err(format!("{name} was not found.", name=name)),
+fn as_bool(value: &Value) -> Result<bool, String> {
+    match value {
+        &Value::Boolean(b) => return Ok(b),
+        _ => return Err(format!("Not a boolean.")),
     };
-    match boolean {
-        Value::Boolean(b) => return Ok(b),
-        _ => return Err(format!("{name} is not a boolean.", name=name)),
-    };
+}
+
+fn get_var<'a>(server: &'a BTreeMap<String, Value>, name: &str) -> Result<&'a Value, String> {
+    server.get(name).ok_or_else(|| format!("{name} not found", name=name))
 }
