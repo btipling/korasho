@@ -8,7 +8,7 @@ use std::str;
 
 mod config;
 mod irc;
-mod connect;
+mod connection;
 
 
 fn read_file_name(args: &mut Args) -> String {
@@ -32,7 +32,7 @@ fn main() {
 
     let handles: Vec<_> = servers.into_iter().map(|server| {
         thread::spawn(move || {
-            let connection = match connect::connect(server.clone()) {
+            let connection = match connection::connect(server.clone()) {
                 Ok(s) => s,
                 Err(err) => {
                     println!("Could not connect to {server}: {err}", server=server, err=err);
@@ -48,7 +48,7 @@ fn main() {
     }
 }
 
-fn handle_connection(mut connection: connect::Connection) {
+fn handle_connection(mut connection: connection::Connection) {
     let _ = connection.write(&[1]);
     let mut buf = [0; 128];
     loop {

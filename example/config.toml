@@ -1,7 +1,14 @@
+nick = "korasho"
+alt = "korash__"
+username = "korasho"
+realname = "korasho"
+
 [[servers]]
 host = "chat.freenode.net"
 port = 6697
 secure = true
+nick = "korasho-bot"
+alt = "korasho_bot"
 
 [[servers]]
 host = "irc.mozilla.org"
