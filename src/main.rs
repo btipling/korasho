@@ -29,7 +29,7 @@ fn main() {
         return;
     }
     let handles: Vec<_> = config.servers.clone().into_iter().map(|server| {
-        let thread_config = config.clone();
+        let captured_config = config.clone();
         thread::spawn(move || {
             let connection = match connection::connect(server.clone()) {
                 Ok(s) => s,
@@ -38,7 +38,7 @@ fn main() {
                     return;
                 },
             };
-            irc::handle_connection(connection, thread_config);
+            irc::handle_connection(connection, captured_config);
         })
     }).collect();
 
