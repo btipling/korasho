@@ -1,8 +1,11 @@
 use std::fs::File;
 use std::io::prelude::*;
-use std::collections::{BTreeMap};
 use std::fmt;
 use toml::Value;
+
+const DEFAULT_BOT_NAME: &'static str = "korasho";
+const DEFAULT_USERNAME: &'static str = "korasho";
+const DEFAULT_REALNAME: &'static str = "korasho.bot";
 
 pub struct Server {
     pub host: String,
@@ -11,9 +14,12 @@ pub struct Server {
 }
 
 pub struct Config {
-    pub servers: Vec<Server>
+    pub servers: Vec<Server>,
+    pub nick: String,
+    pub alt: String,
+    pub username: String,
+    pub realname: String,
 }
-
 
 impl fmt::Display for Server {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -52,26 +58,32 @@ pub fn read_config(filename: &String) -> Config {
                 println!("{}:{}:{}-{}:{} error: {}",
                 filename, loline, locol, hiline, hicol, err.desc);
             }
-            panic!("Unable to read config file. Is it proper toml?")
+            panic!("Unable to read config file. Is it proper toml?");
         }
     };
-    let toml_servers = Value::Table(rawtoml);
-    let toml_servers = toml_servers.lookup("servers");
-    let toml_servers = match toml_servers {
-        None => panic!("Unable to find any servers in config!"),
-        s => s.unwrap(),
+    let toml_config = Value::Table(rawtoml);
+    let nick = match get_var(&toml_config, "nick").and_then(|v| as_string(v)) {
+        Ok(n) => n,
+        _ => DEFAULT_BOT_NAME.to_string(),
     };
-    let toml_servers = match *toml_servers {
-        Value::Array(ref s) => s,
-        _ => panic!("Config needs to be an array of servers!"),
+    let alt = match get_var(&toml_config, "alt").and_then(|v| as_string(v)) {
+        Ok(n) => n,
+        _ => format!("{botname}`", botname=DEFAULT_BOT_NAME),
     };
-    let toml_servers = toml_servers.into_iter();
+    let username = match get_var(&toml_config, "username").and_then(|v| as_string(v)) {
+        Ok(n) => n,
+        _ => DEFAULT_USERNAME.to_string(),
+    };
+    let realname = match get_var(&toml_config, "realname").and_then(|v| as_string(v)) {
+        Ok(n) => n,
+        _ => DEFAULT_REALNAME.to_string(),
+    };
+    let toml_servers = match get_var(&toml_config, "servers").and_then(|v| as_array(v)) {
+        Ok(n) => n,
+        Err(err) => panic!("Config needs servers to connect to! {err}", err=err),
+    };
     let mut servers = Vec::new();
-    for k in toml_servers {
-        let toml_server = match *k {
-            Value::Table(ref s) => s,
-            _ => continue,
-        };
+    for toml_server in toml_servers.into_iter() {
         let host = match get_var(toml_server, "host").and_then(|v| as_string(v)) {
             Ok(h) => h,
             Err(err) => {
@@ -94,7 +106,13 @@ pub fn read_config(filename: &String) -> Config {
         println!("found address: {host}:{port} {secure}", host=host, port=port, secure=secure);
         servers.push(Server { host: host.clone(), port: port, secure: secure })
     }
-    Config {servers: servers}
+    Config {
+        nick: nick,
+        alt: alt,
+        servers: servers,
+        username: username,
+        realname: realname,
+    }
 }
 
 fn as_string(value: &Value) -> Result<String, String> {
@@ -118,6 +136,17 @@ fn as_bool(value: &Value) -> Result<bool, String> {
     };
 }
 
-fn get_var<'a>(server: &'a BTreeMap<String, Value>, name: &str) -> Result<&'a Value, String> {
-    server.get(name).ok_or_else(|| format!("{name} not found", name=name))
+fn as_array(value: &Value) -> Result<&Vec<Value>, String> {
+    match value {
+        &Value::Array(ref a) => return Ok(a),
+        _ => return Err(format!("Not an array.")),
+    };
+}
+
+fn get_var<'a>(map: &'a Value, name: &str) -> Result<&'a Value, String> {
+    let map = match *map {
+        Value::Table(ref s) => s,
+        _ => return Err(format!("Not a valid map while looking up {name}", name=name)),
+    };
+    map.get(name).ok_or_else(|| format!("{name} not found", name=name))
 }
