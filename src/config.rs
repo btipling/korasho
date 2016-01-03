@@ -13,14 +13,6 @@ pub struct Server {
     pub secure: bool,
 }
 
-pub struct Config {
-    pub servers: Vec<Server>,
-    pub nick: String,
-    pub alt: String,
-    pub username: String,
-    pub realname: String,
-}
-
 impl fmt::Display for Server {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.host, self.port)
@@ -33,6 +25,26 @@ impl Clone for Server {
             host: self.host.clone(),
             port: self.port,
             secure: self.secure,
+        }
+    }
+}
+
+pub struct Config {
+    pub servers: Vec<Server>,
+    pub nick: String,
+    pub alt: String,
+    pub username: String,
+    pub realname: String,
+}
+
+impl Clone for Config {
+    fn clone(&self) -> Config {
+        Config {
+            servers: self.servers.clone(),
+            nick: self.nick.clone(),
+            alt: self.alt.clone(),
+            username: self.username.clone(),
+            realname: self.realname.clone(),
         }
     }
 }
