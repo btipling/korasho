@@ -38,7 +38,8 @@ fn main() {
                     return;
                 },
             };
-            irc::handle_connection(connection, captured_config);
+            let mut irc = irc::new(connection, captured_config);
+            irc.run();
         })
     }).collect();
 
