@@ -3,11 +3,13 @@ use std::net::TcpStream;
 use std::io::prelude::*;
 use std::io;
 
+#[derive(Debug)]
 pub enum IRCStream {
     PlainText(TcpStream),
     Secure(SslStream<TcpStream>),
 }
 
+#[derive(Debug)]
 pub struct Connection {
     pub server: ::config::Server,
     pub stream: IRCStream,

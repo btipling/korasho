@@ -1,4 +1,5 @@
 extern crate openssl;
+extern crate time;
 extern crate toml;
 
 use std::env;

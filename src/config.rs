@@ -7,6 +7,7 @@ const DEFAULT_BOT_NAME: &'static str = "korasho";
 const DEFAULT_USERNAME: &'static str = "korasho";
 const DEFAULT_REALNAME: &'static str = "korasho.bot";
 
+#[derive(Debug)]
 pub struct Server {
     pub host: String,
     pub port: u16,
@@ -29,6 +30,7 @@ impl Clone for Server {
     }
 }
 
+#[derive(Debug)]
 pub struct Config {
     pub servers: Vec<Server>,
     pub nick: String,
