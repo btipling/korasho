@@ -1,6 +1,7 @@
 use openssl::ssl::{Ssl, SslContext, SslMethod, SslStream};
 use std::net::TcpStream;
 use std::io::prelude::*;
+use std::time::Duration;
 use std::io;
 
 #[derive(Debug)]
@@ -62,6 +63,10 @@ pub fn connect(server: ::config::Server) -> Result<Connection, String> {
         Ok(c) => c,
         Err(err) => return Err(format!("Unable to create a TCP connection: {err}", err=err)),
     };
+    let timeout = Some(Duration::new(60 * 5, 0));
+    stream.set_read_timeout(timeout).unwrap();
+    stream.set_write_timeout(timeout).unwrap();
+
     if server.secure {
         let context = match SslContext::new(SslMethod::Sslv23) {
             Ok(c) => c,
