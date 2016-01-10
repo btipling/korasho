@@ -9,7 +9,9 @@ port = 6697
 secure = true
 nick = "korasho-bot"
 alt = "korasho_bot"
+channels = [ "#korasho", "#korashobot" ]
 
 [[servers]]
 host = "irc.mozilla.org"
 port = 6667
+channels = [ "#korasho", "#korashobot", "#rustbot" ]

@@ -29,6 +29,7 @@ fn main() {
         println!("Found no servers. :/");
         return;
     }
+    return;
     let handles: Vec<_> = config.servers.clone().into_iter().map(|server| {
         let captured_config = config.clone();
         thread::spawn(move || {

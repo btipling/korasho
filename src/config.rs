@@ -12,6 +12,7 @@ pub struct Server {
     pub host: String,
     pub port: u16,
     pub secure: bool,
+    pub channels: Vec<String>,
 }
 
 impl fmt::Display for Server {
@@ -26,6 +27,7 @@ impl Clone for Server {
             host: self.host.clone(),
             port: self.port,
             secure: self.secure,
+            channels: self.channels.clone(),
         }
     }
 }
@@ -116,9 +118,30 @@ pub fn read_config(filename: &String) -> Config {
             Ok(s) => s,
             _ => false,
         };
+        let toml_channels = match get_var(toml_server, "channels").and_then(|v| as_array(v)) {
+            Ok(c) => c,
+            _ => continue,
+        };
+        let mut channels: Vec<String> = Vec::new();
+        for toml_channel in toml_channels {
+            let channel = match as_string(toml_channel) {
+                Ok(c) => c,
+                _ => continue,
+            };
+            channels.push(channel);
+        }
         let port: u16 = port as u16;
-        println!("found address: {host}:{port} {secure}", host=host, port=port, secure=secure);
-        servers.push(Server { host: host.clone(), port: port, secure: secure })
+        println!("found address: {host}:{port} {secure} {channels:?}",
+                 host=host,
+                 port=port,
+                 secure=secure,
+                 channels=channels);
+        servers.push(Server {
+            host: host.clone(),
+            port: port,
+            secure: secure,
+            channels: channels,
+        })
     }
     Config {
         nick: nick,
