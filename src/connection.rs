@@ -9,18 +9,35 @@ pub enum IRCStream {
     Secure(SslStream<TcpStream>),
 }
 
+impl Write for IRCStream {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            &mut IRCStream::PlainText(ref mut stream) => stream.write(buf),
+            &mut IRCStream::Secure(ref mut stream) => stream.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            &mut IRCStream::PlainText(ref mut stream) => stream.flush(),
+            &mut IRCStream::Secure(ref mut stream) => stream.flush(),
+        }
+    }
+}
+
+
 #[derive(Debug)]
 pub struct Connection {
     pub server: ::config::Server,
     pub stream: IRCStream,
+    pub writer: io::BufWriter<IRCStream>,
 }
 
 impl Connection {
-    pub fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match self.stream {
-            IRCStream::PlainText(ref mut s) => s.write(buf),
-            IRCStream::Secure(ref mut s) => s.write(buf),
-        }
+    pub fn write(&mut self, buf: &[u8]) {
+        println!(" -> {:?}", String::from_utf8_lossy(buf));
+        self.writer.write_all(buf).unwrap();
+        self.writer.flush().unwrap();
     }
     pub fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match self.stream {
@@ -51,13 +68,25 @@ pub fn connect(server: ::config::Server) -> Result<Connection, String> {
             Ok(c) => c,
             Err(err) => return Err(format!("To create SSL connection: {err}", err=err)),
         };
+        let reader = match stream.try_clone() {
+            Ok(s) => s,
+            Err(err) => return Err(format!("Could not clone stream: {err}", err=err)),
+        };
+        let writer = io::BufWriter::new(IRCStream::Secure(stream));
         return Ok(Connection {
             server: server,
-            stream: IRCStream::Secure(stream),
+            writer: writer,
+            stream: IRCStream::Secure(reader),
         })
     }
+    let reader = match stream.try_clone() {
+        Ok(s) => s,
+        Err(err) => return Err(format!("Could not clone stream: {err}", err=err)),
+    };
+    let writer = io::BufWriter::new(IRCStream::PlainText(stream));
     Ok(Connection {
         server: server,
-        stream: IRCStream::PlainText(stream),
+        writer: writer,
+        stream: IRCStream::PlainText(reader),
     })
 }

@@ -39,9 +39,11 @@ pub enum IRCMessage {
     IRCCommMessage(IRCCommMessage),
 }
 
+const NICK: &'static str = "NICK";
+const USER: &'static str = "USER";
+
 impl IRC {
     pub fn run (&mut self) {
-        let _ = self.connection.write(&[1]);
         let mut buf = [0; 128];
         loop {
             if let Ok(result) = self.connection.read(&mut buf) {
@@ -70,12 +72,11 @@ impl IRC {
     }
 
     fn process_line(&mut self, line: String) {
-        println!("-> {line}", line=line);
+        println!("<- {line}", line=line);
         let message = match ::irc_parser::parse_line(line) {
             Some(m) => m,
             None => return,
         };
-        println!("Received message: {:?}", message);
         match message {
             IRCMessage::IRCServerMessage(m) => self.process_server_message(m),
             IRCMessage::IRCCommMessage(m) => self.process_com_message(m),
@@ -85,7 +86,8 @@ impl IRC {
     fn process_server_message(&mut self, message: IRCServerMessage) {
         if !self.conn_state.identified {
             self.conn_state.server_address = message.server;
-            self.identify()
+            self.identify();
+            self.conn_state.identified = true;
         }
     }
 
@@ -94,6 +96,31 @@ impl IRC {
     }
 
     fn identify(&mut self) {
+        self.NICK();
+        self.USER();
+    }
+
+    fn NICK(&mut self) {
+        let nick = self.config.nick.clone();
+        self.SEND_COMMAND(NICK, &nick);
+        //self.SEND_RAW("NICK foomanchu8 \n");
+    }
+
+    fn USER(&mut self) {
+        let user = self.config.username.clone();
+        let realname = self.config.realname.clone();
+        let message = format!("{user} 0 * :{realname}", user=user, realname=realname);
+        //self.SEND_RAW("USER lol 0 * :LOL \n");
+        self.SEND_COMMAND(USER, &message);
+    }
+
+    fn SEND_COMMAND(&mut self, cmd: &str, message: &str) {
+        let cmd = format!("{cmd} {message} \n", cmd=cmd, message=message);
+        self.SEND_RAW(cmd.as_ref());
+    }
+
+    fn SEND_RAW(&mut self, message: &str) {
+        self.connection.write(message.as_ref());
     }
 
 }
