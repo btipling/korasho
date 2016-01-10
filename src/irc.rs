@@ -1,5 +1,4 @@
 use std::str;
-use time::get_time;
 
 #[derive(Default)]
 #[derive(Debug)]
@@ -18,24 +17,24 @@ pub struct IRC {
 }
 
 #[derive(Debug)]
-enum IRCMessageType {
+pub enum IRCMessageType {
     NOTICE(String),
 }
 
 #[derive(Debug)]
-struct IRCServerMessage {
-    server: String,
-    message: IRCMessageType,
-    time: i64,
+pub struct IRCServerMessage {
+    pub server: String,
+    pub message: IRCMessageType,
+    pub time: i64,
 }
 
 #[derive(Debug)]
-struct IRCCommMessage {
-    time: i64,
+pub struct IRCCommMessage {
+    pub time: i64,
 }
 
 #[derive(Debug)]
-enum IRCMessage {
+pub enum IRCMessage {
     IRCServerMessage(IRCServerMessage),
     IRCCommMessage(IRCCommMessage),
 }
@@ -70,79 +69,30 @@ impl IRC {
 
     fn process_line(&mut self, line: String) {
         println!("-> {line}", line=line);
-        let message = self.parse_line(line);
-        println!("Received message: {:?}", message);
-        if !self.conn_state.identified {
-        }
-    }
-
-    fn parse_server_line(&mut self, line_bytes: &[u8]) -> Option<IRCMessage> {
-        let new_line = line_bytes.clone();
-        let (_, line_bytes) = match new_line.split_first() {
-            Some(b) => b,
-            None => return None,
-        };
-        let mut line_iter = line_bytes.splitn(2, |x| *x == b':');
-        let meta_parts = match line_iter.next() {
-            Some(p) => p,
-            None => return None,
-        };
-        let message = match line_iter.next() {
-            Some(m) => String::from_utf8_lossy(m),
-            None => return None,
-        };
-        let message = message.into_owned();
-        let mut meta_iter = meta_parts.split(|x| *x == b' ');
-        let server = match meta_iter.next() {
-            Some(m) => String::from_utf8_lossy(m),
-            None => return None,
-        };
-        let server = server.into_owned();
-        let server_message_type = match meta_iter.next() {
-            Some(m) => String::from_utf8_lossy(m),
-            None => return None,
-        };
-        let server_message_type = server_message_type.into_owned();
-        println!("server_message_type {:?}", server_message_type);
-        let message = match self.make_message(&server_message_type, &message) {
+        let message = match ::irc_parser::parse_line(line) {
             Some(m) => m,
-            _ => return None,
+            None => return,
         };
-        let time = get_time();
-        let server_message = IRCServerMessage {
-            server: server,
-            message: message,
-            time: time.sec,
-        };
-        let irc_message = IRCMessage::IRCServerMessage(server_message);
-        return Some(irc_message);
-    }
-
-    fn parse_comm_line(&mut self, line_bytes: &[u8]) -> Option<IRCMessage> {
-        return None;
-    }
-
-    fn parse_line(&mut self, line: String) -> Option<IRCMessage> {
-        let line_bytes: &[u8] = line.as_ref();
-        let len = line_bytes.len();
-        if len < 3 {
-            return None;
-        }
-        let line_bytes = &line_bytes[0..len-2];
-        if line_bytes[0] == b':' {
-            return self.parse_server_line(line_bytes);
-        }
-        return self.parse_comm_line(line_bytes);
-    }
-
-    fn make_message(&mut self, message_type: &str, message: &str) -> Option<IRCMessageType> {
-        let stored_message = message.to_string();
-        match message_type {
-            "NOTICE" => Some(IRCMessageType::NOTICE(stored_message)),
-            _ => None,
+        println!("Received message: {:?}", message);
+        match message {
+            IRCMessage::IRCServerMessage(m) => self.process_server_message(m),
+            IRCMessage::IRCCommMessage(m) => self.process_com_message(m),
         }
     }
 
+    fn process_server_message(&mut self, message: IRCServerMessage) {
+        if !self.conn_state.identified {
+            self.conn_state.server_address = message.server;
+            self.identify()
+        }
+    }
+
+    fn process_com_message(&mut self, message: IRCCommMessage) {
+        println!("Processing communication message {:?}", message);
+    }
+
+    fn identify(&mut self) {
+    }
 
 }
 

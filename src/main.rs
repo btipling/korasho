@@ -8,6 +8,7 @@ use std::env::Args;
 
 mod config;
 mod irc;
+mod irc_parser;
 mod connection;
 
 
