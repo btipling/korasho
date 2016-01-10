@@ -5,7 +5,6 @@ use std::str;
 struct ConnectionState {
     nick: String,
     server_address: String,
-    current_buf: String,
     identified: bool,
 }
 
@@ -44,35 +43,19 @@ const USER: &'static str = "USER";
 
 impl IRC {
     pub fn run (&mut self) {
-        let mut buf = [0; 128];
         loop {
+            let mut buf: Vec<u8> = Vec::new();
             if let Ok(result) = self.connection.read(&mut buf) {
-                if result < 1 {
-                    continue;
-                }
                 if let Ok(result_str) = str::from_utf8(&buf) {
-                    self.process_data(&result_str);
+                    self.process_line(&result_str);
                 }
             }
         }
     }
 
-    fn process_data(&mut self, result_str: &str) {
-        self.conn_state.current_buf.push_str(result_str);
-        loop {
-            let i = match self.conn_state.current_buf.find('\n') {
-                Some(i) => i,
-                _ => break,
-            };
-            let new_buf = self.conn_state.current_buf.clone();
-            let (line, rest) = new_buf.split_at(i + 1);
-            self.conn_state.current_buf = rest.to_string();
-            self.process_line(line.to_string());
-        }
-    }
-
-    fn process_line(&mut self, line: String) {
+    fn process_line(&mut self, line: &str) {
         println!("<- {line}", line=line);
+        let line = line.to_string();
         let message = match ::irc_parser::parse_line(line) {
             Some(m) => m,
             None => return,
@@ -103,14 +86,12 @@ impl IRC {
     fn NICK(&mut self) {
         let nick = self.config.nick.clone();
         self.SEND_COMMAND(NICK, &nick);
-        //self.SEND_RAW("NICK foomanchu8 \n");
     }
 
     fn USER(&mut self) {
         let user = self.config.username.clone();
         let realname = self.config.realname.clone();
         let message = format!("{user} 0 * :{realname}", user=user, realname=realname);
-        //self.SEND_RAW("USER lol 0 * :LOL \n");
         self.SEND_COMMAND(USER, &message);
     }
 

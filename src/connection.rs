@@ -12,15 +12,25 @@ pub enum IRCStream {
 impl Write for IRCStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self {
-            &mut IRCStream::PlainText(ref mut stream) => stream.write(buf),
-            &mut IRCStream::Secure(ref mut stream) => stream.write(buf),
+            &mut IRCStream::PlainText(ref mut writer) => writer.write(buf),
+            &mut IRCStream::Secure(ref mut writer) => writer.write(buf),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match self {
-            &mut IRCStream::PlainText(ref mut stream) => stream.flush(),
-            &mut IRCStream::Secure(ref mut stream) => stream.flush(),
+            &mut IRCStream::PlainText(ref mut writer) => writer.flush(),
+            &mut IRCStream::Secure(ref mut writer) => writer.flush(),
+        }
+    }
+}
+
+
+impl Read for IRCStream {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match self {
+            &mut IRCStream::PlainText(ref mut reader) => reader.read(buf),
+            &mut IRCStream::Secure(ref mut reader) => reader.read(buf),
         }
     }
 }
@@ -29,7 +39,7 @@ impl Write for IRCStream {
 #[derive(Debug)]
 pub struct Connection {
     pub server: ::config::Server,
-    pub stream: IRCStream,
+    pub reader: io::BufReader<IRCStream>,
     pub writer: io::BufWriter<IRCStream>,
 }
 
@@ -39,11 +49,8 @@ impl Connection {
         self.writer.write_all(buf).unwrap();
         self.writer.flush().unwrap();
     }
-    pub fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match self.stream {
-            IRCStream::PlainText(ref mut s) => s.read(buf),
-            IRCStream::Secure(ref mut s) => s.read(buf),
-        }
+    pub fn read(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.reader.read_until(b'\n', buf)
     }
 }
 
@@ -69,24 +76,24 @@ pub fn connect(server: ::config::Server) -> Result<Connection, String> {
             Err(err) => return Err(format!("To create SSL connection: {err}", err=err)),
         };
         let reader = match stream.try_clone() {
-            Ok(s) => s,
+            Ok(s) => io::BufReader::new(IRCStream::Secure(s)),
             Err(err) => return Err(format!("Could not clone stream: {err}", err=err)),
         };
         let writer = io::BufWriter::new(IRCStream::Secure(stream));
         return Ok(Connection {
             server: server,
             writer: writer,
-            stream: IRCStream::Secure(reader),
+            reader: reader,
         })
     }
     let reader = match stream.try_clone() {
-        Ok(s) => s,
+        Ok(s) => io::BufReader::new(IRCStream::PlainText(s)),
         Err(err) => return Err(format!("Could not clone stream: {err}", err=err)),
     };
     let writer = io::BufWriter::new(IRCStream::PlainText(stream));
     Ok(Connection {
         server: server,
         writer: writer,
-        stream: IRCStream::PlainText(reader),
+        reader: reader,
     })
 }

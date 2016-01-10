@@ -40,7 +40,6 @@ fn parse_server_line(line_bytes: &[u8]) -> Option<::irc::IRCMessage> {
         None => return None,
     };
     let server_message_type = server_message_type.into_owned();
-    println!("server_message_type {:?}", server_message_type);
     let message = match make_message(&server_message_type, &message) {
         Some(m) => m,
         _ => return None,
