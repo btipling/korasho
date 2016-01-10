@@ -13,11 +13,10 @@ mod connection;
 
 
 fn read_file_name(args: &mut Args) -> String {
-    if args.len() > 1 {
-        return args.nth(1).unwrap();
-    } else {
-        panic!("Need a config file path!");
-    };
+    if let Some(file_name) = args.nth(1) {
+        return file_name;
+    }
+    panic!("Need a config file path!");
 }
 
 fn main() {

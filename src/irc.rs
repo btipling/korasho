@@ -44,12 +44,14 @@ impl IRC {
         let _ = self.connection.write(&[1]);
         let mut buf = [0; 128];
         loop {
-            let result = self.connection.read(&mut buf).unwrap(); // ignore here too
-            if result < 1 {
-                continue;
+            if let Ok(result) = self.connection.read(&mut buf) {
+                if result < 1 {
+                    continue;
+                }
+                if let Ok(result_str) = str::from_utf8(&buf) {
+                    self.process_data(&result_str);
+                }
             }
-            let result_str = str::from_utf8(&buf).unwrap();
-            self.process_data(&result_str);
         }
     }
 
