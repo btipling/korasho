@@ -6,10 +6,11 @@ use std::env;
 use std::thread;
 use std::env::Args;
 
+mod bot;
 mod config;
+mod connection;
 mod irc;
 mod irc_parser;
-mod connection;
 
 
 fn read_file_name(args: &mut Args) -> String {
@@ -29,7 +30,6 @@ fn main() {
         println!("Found no servers. :/");
         return;
     }
-    return;
     let handles: Vec<_> = config.servers.clone().into_iter().map(|server| {
         let captured_config = config.clone();
         thread::spawn(move || {
@@ -40,7 +40,8 @@ fn main() {
                     return;
                 },
             };
-            let mut irc = irc::new(connection, captured_config);
+            let mut bot = bot::new(&captured_config);
+            let mut irc = irc::new(connection, &captured_config, bot);
             irc.run();
         })
     }).collect();

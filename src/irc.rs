@@ -1,5 +1,7 @@
 use std::str;
 use time;
+use std::rc;
+use std::cell;
 
 #[derive(Default)]
 #[derive(Debug)]
@@ -10,13 +12,15 @@ struct ConnectionState {
 }
 
 #[derive(Debug)]
-pub struct IRC {
+pub struct IRC<'a> {
     connection: ::connection::Connection,
-    config: ::config::Config,
+    config: &'a ::config::Config,
     conn_state: ConnectionState,
+    bot: ::bot::Bot<'a>,
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub enum IRCMessageType {
     NOTICE(String),
     MODE(String),
@@ -24,6 +28,7 @@ pub enum IRCMessageType {
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct IRCServerMessage {
     pub server: String,
     pub message: IRCMessageType,
@@ -33,17 +38,20 @@ pub struct IRCServerMessage {
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct IRCPing {
     pub time: i64,
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct IRCCommMessage {
     pub time: i64,
     pub raw: String,
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub enum IRCMessage {
     IRCServerMessage(IRCServerMessage),
     IRCCommMessage(IRCCommMessage),
@@ -54,7 +62,7 @@ const NICK: &'static str = "NICK";
 const USER: &'static str = "USER";
 const PONG: &'static str = "PONG";
 
-impl IRC {
+impl<'a> IRC<'a> {
     pub fn run (&mut self) {
         loop {
             let mut buf: Vec<u8> = Vec::new();
@@ -63,6 +71,7 @@ impl IRC {
                     self.process_line(&result_str);
                 }
             }
+            self.bot.get_data();
         }
     }
 
@@ -79,11 +88,13 @@ impl IRC {
                 return;
             },
         };
+        let bot_message = message.clone();
         match message {
             IRCMessage::IRCServerMessage(m) => self.process_server_message(m),
             IRCMessage::IRCCommMessage(m) => self.process_com_message(m),
             IRCMessage::IRCPing(p) => self.handle_ping(p),
         }
+        self.bot.handle_message();
     }
 
     fn format_time(&mut self, seconds: i64) -> String {
@@ -115,6 +126,10 @@ impl IRC {
         println!("Processing communication message {:?}", message);
     }
 
+    pub fn handle_bot_request(&mut self) {
+        println!("Handling a bot request! This should panic!");
+    }
+
     fn identify(&mut self) {
         self.nick();
         self.user();
@@ -143,10 +158,15 @@ impl IRC {
 
 }
 
-pub fn new(connection: ::connection::Connection, config: ::config::Config) -> IRC {
+pub fn new<'a>(
+                connection: ::connection::Connection,
+                config: &'a ::config::Config,
+                bot: ::bot::Bot<'a>
+        ) -> IRC<'a> {
     IRC {
         connection: connection,
         config: config,
+        bot: bot,
         conn_state: ConnectionState {
             identified: false,
             ..Default::default()

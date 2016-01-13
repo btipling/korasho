@@ -63,7 +63,7 @@ pub fn connect(server: ::config::Server) -> Result<Connection, String> {
         Ok(c) => c,
         Err(err) => return Err(format!("Unable to create a TCP connection: {err}", err=err)),
     };
-    let timeout = Some(Duration::new(60 * 5, 0));
+    let timeout = Some(Duration::new(1, 0));
     stream.set_read_timeout(timeout).unwrap();
     stream.set_write_timeout(timeout).unwrap();
 
