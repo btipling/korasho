@@ -1,7 +1,5 @@
 use std::str;
 use time;
-use std::rc;
-use std::cell;
 
 #[derive(Default)]
 #[derive(Debug)]
@@ -59,6 +57,7 @@ pub enum IRCMessage {
 }
 
 const NICK: &'static str = "NICK";
+const JOIN: &'static str = "JOIN";
 const USER: &'static str = "USER";
 const PONG: &'static str = "PONG";
 
@@ -71,7 +70,18 @@ impl<'a> IRC<'a> {
                     self.process_line(&result_str);
                 }
             }
-            self.bot.get_data();
+            let job = self.bot.get_job();
+            self.handle_bot_job(job);
+        }
+    }
+
+    fn handle_bot_job(&mut self, bot_job: Option<::bot::BotJob>) {
+        let bot_job = match bot_job {
+            Some(j) => j,
+            None => return,
+        };
+        match bot_job {
+            ::bot::BotJob::Join(channel) => self.join(&channel),
         }
     }
 
@@ -94,7 +104,7 @@ impl<'a> IRC<'a> {
             IRCMessage::IRCCommMessage(m) => self.process_com_message(m),
             IRCMessage::IRCPing(p) => self.handle_ping(p),
         }
-        self.bot.handle_message();
+        self.bot.handle_message(bot_message);
     }
 
     fn format_time(&mut self, seconds: i64) -> String {
@@ -126,13 +136,13 @@ impl<'a> IRC<'a> {
         println!("Processing communication message {:?}", message);
     }
 
-    pub fn handle_bot_request(&mut self) {
-        println!("Handling a bot request! This should panic!");
-    }
-
     fn identify(&mut self) {
         self.nick();
         self.user();
+    }
+
+    fn join(&mut self, channel: &str) {
+        self.send_command(JOIN, channel);
     }
 
     fn nick(&mut self) {

@@ -40,7 +40,7 @@ fn main() {
                     return;
                 },
             };
-            let mut bot = bot::new(&captured_config);
+            let bot = bot::new(&captured_config, server.clone());
             let mut irc = irc::new(connection, &captured_config, bot);
             irc.run();
         })
