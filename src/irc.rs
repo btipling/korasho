@@ -19,17 +19,32 @@ pub struct IRC<'a> {
 
 #[derive(Debug)]
 #[derive(Clone)]
+pub struct Client {
+    pub nick: String,
+    pub username: String,
+    pub address: String,
+}
+
+#[derive(Debug)]
+#[derive(Clone)]
+pub enum Entity {
+    Server(String),
+    Client(Client),
+}
+
+#[derive(Debug)]
+#[derive(Clone)]
 pub enum IRCMessageType {
     NOTICE(String),
     MODE(String),
-    PRIVMSG(String),
+    PRIVMSG(Vec<u8>),
     INFO(u64),
 }
 
 #[derive(Debug)]
 #[derive(Clone)]
 pub struct IRCServerMessage {
-    pub from: String,
+    pub from: Entity,
     pub message: IRCMessageType,
     pub time: i64,
     pub raw: String,
@@ -118,9 +133,14 @@ impl<'a> IRC<'a> {
     fn process_server_message(&mut self, message: IRCServerMessage) {
         println!("<- {time} {line}", time=self.format_time(message.time), line=message.raw);
         if !self.conn_state.identified {
-            self.conn_state.server_address = message.from;
-            self.identify();
-            self.conn_state.identified = true;
+            match message.from {
+                Entity::Server(s) => {
+                    self.conn_state.server_address = s;
+                    self.identify();
+                    self.conn_state.identified = true;
+                },
+                _ => {},
+            }
         }
     }
 

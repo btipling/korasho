@@ -3,6 +3,7 @@ alt = "korash__"
 username = "korasho"
 realname = "korasho"
 admin_password = "password"
+command_char = "!"
 
 [[servers]]
 host = "chat.freenode.net"

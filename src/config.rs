@@ -31,6 +31,7 @@ pub struct Config {
     pub username: String,
     pub realname: String,
     pub admin_password: String,
+    pub command_byte: u8,
 }
 
 pub fn read_config(filename: &String) -> Config {
@@ -77,6 +78,14 @@ pub fn read_config(filename: &String) -> Config {
     let password = match get_var(&toml_config, "admin_password").and_then(|v| as_string(v)) {
         Ok(n) => n,
         _ => panic!("Bot needs an admin password!"),
+    };
+    let command_bytes = match get_var(&toml_config, "command_char").and_then(|v| as_string(v)) {
+        Ok(n) => n.into_bytes(),
+        _ => panic!("Bot needs a command_char!"),
+    };
+    let command_byte = match command_bytes.get(0) {
+        Some(b) => b,
+        _ => panic!("Bot needs a command_char!"),
     };
     let toml_servers = match get_var(&toml_config, "servers").and_then(|v| as_array(v)) {
         Ok(n) => n,
@@ -134,6 +143,7 @@ pub fn read_config(filename: &String) -> Config {
         username: username,
         realname: realname,
         admin_password: password,
+        command_byte: *command_byte,
     }
 }
 

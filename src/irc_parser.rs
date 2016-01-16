@@ -41,10 +41,13 @@ fn parse_server_line(line_bytes: &[u8]) -> Option<::irc::IRCMessage> {
     };
     let mut meta_iter = meta_parts.split(|x| *x == b' ');
     let from = match meta_iter.next() {
-        Some(m) => String::from_utf8_lossy(m),
+        Some(m) => m,
         None => return None,
     };
-    let from = from.into_owned();
+    let from = match parse_from(from) {
+        Some(f) => f,
+        None => return None,
+    };
     let server_message_type = match meta_iter.next() {
         Some(m) => String::from_utf8_lossy(m),
         None => return None,
@@ -74,12 +77,43 @@ fn parse_server_line(line_bytes: &[u8]) -> Option<::irc::IRCMessage> {
     return Some(irc_message);
 }
 
+fn parse_from(from_bytes: &[u8]) -> Option<::irc::Entity> {
+    let mut from_iter = from_bytes.splitn(2, |x| *x == b'!');
+    let nick = match from_iter.next() {
+        Some(n) => n,
+        None => return None,
+    };
+    let nick = String::from_utf8_lossy(nick);
+    let address_bytes = match from_iter.next() {
+        Some(r) => r,
+        None => return Some(::irc::Entity::Server(nick.into_owned())),
+    };
+    let mut addresss_iter = address_bytes.splitn(2, |x| *x == b'@');
+    let username = match addresss_iter.next() {
+        Some(u) => u,
+        None => return None,
+    };
+    let address = match addresss_iter.next() {
+        Some(a) => a,
+        None => return None,
+    };
+    let nick = nick.into_owned();
+    let username = String::from_utf8_lossy(username).into_owned();
+    let address = String::from_utf8_lossy(address).into_owned();
+    let client = ::irc::Client {
+        nick: nick,
+        username: username,
+        address: address,
+    };
+    Some(::irc::Entity::Client(client))
+}
+
 fn make_message(message_type: &str, message: &str, meta: &str) -> Option<::irc::IRCMessageType> {
     let stored_message = message.to_string();
     match message_type {
         "NOTICE" => Some(::irc::IRCMessageType::NOTICE(stored_message)),
         "MODE" => Some(::irc::IRCMessageType::MODE(meta.to_string())),
-        "PRIVMSG" => Some(::irc::IRCMessageType::PRIVMSG(message.to_string())),
+        "PRIVMSG" => Some(::irc::IRCMessageType::PRIVMSG(message.as_bytes().to_vec())),
         _ => {
             match message_type.parse::<u64>() {
                 Ok(i) => Some(::irc::IRCMessageType::INFO(i)),
