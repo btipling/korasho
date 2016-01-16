@@ -8,6 +8,7 @@ const DEFAULT_USERNAME: &'static str = "korasho";
 const DEFAULT_REALNAME: &'static str = "korasho.bot";
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct Server {
     pub host: String,
     pub port: u16,
@@ -21,36 +22,15 @@ impl fmt::Display for Server {
     }
 }
 
-impl Clone for Server {
-    fn clone(&self) -> Server {
-        return Server {
-            host: self.host.clone(),
-            port: self.port,
-            secure: self.secure,
-            channels: self.channels.clone(),
-        }
-    }
-}
-
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct Config {
     pub servers: Vec<Server>,
     pub nick: String,
     pub alt: String,
     pub username: String,
     pub realname: String,
-}
-
-impl Clone for Config {
-    fn clone(&self) -> Config {
-        Config {
-            servers: self.servers.clone(),
-            nick: self.nick.clone(),
-            alt: self.alt.clone(),
-            username: self.username.clone(),
-            realname: self.realname.clone(),
-        }
-    }
+    pub admin_password: String,
 }
 
 pub fn read_config(filename: &String) -> Config {
@@ -93,6 +73,10 @@ pub fn read_config(filename: &String) -> Config {
     let realname = match get_var(&toml_config, "realname").and_then(|v| as_string(v)) {
         Ok(n) => n,
         _ => DEFAULT_REALNAME.to_string(),
+    };
+    let password = match get_var(&toml_config, "admin_password").and_then(|v| as_string(v)) {
+        Ok(n) => n,
+        _ => panic!("Bot needs an admin password!"),
     };
     let toml_servers = match get_var(&toml_config, "servers").and_then(|v| as_array(v)) {
         Ok(n) => n,
@@ -149,6 +133,7 @@ pub fn read_config(filename: &String) -> Config {
         servers: servers,
         username: username,
         realname: realname,
+        admin_password: password,
     }
 }
 
