@@ -38,7 +38,9 @@ impl<'a> Bot<'a> {
     }
 
     pub fn process_server_message(&mut self, message: ::irc::IRCServerMessage) {
-        match message.message {
+        let message_data = message.message.clone();
+        match message_data {
+            ::irc::IRCMessageType::PRIVMSG(m) => self.handle_privmsg(&m, message),
             ::irc::IRCMessageType::INFO(i) => {
                 if i > 10 && !self.bot_state.connected {
                     self.bot_state.connected = true;
@@ -49,6 +51,10 @@ impl<'a> Bot<'a> {
             },
             _ => {},
         }
+    }
+
+    pub fn handle_privmsg(&mut self, privmsg: &str, message: ::irc::IRCServerMessage) {
+        println!("Got a private message {:?} {:?}", privmsg, message);
     }
 }
 

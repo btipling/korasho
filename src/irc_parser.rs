@@ -20,7 +20,8 @@ pub fn parse_line(line: String) -> Option<::irc::IRCMessage> {
             return Some(::irc::IRCMessage::IRCPing(ping));
         }
     }
-    return parse_comm_line(line_bytes);
+    println!("Unhandled line? {}", String::from_utf8_lossy(line_bytes));
+    return None
 }
 
 fn parse_server_line(line_bytes: &[u8]) -> Option<::irc::IRCMessage> {
@@ -39,11 +40,11 @@ fn parse_server_line(line_bytes: &[u8]) -> Option<::irc::IRCMessage> {
         None => "".to_string(),
     };
     let mut meta_iter = meta_parts.split(|x| *x == b' ');
-    let server = match meta_iter.next() {
+    let from = match meta_iter.next() {
         Some(m) => String::from_utf8_lossy(m),
         None => return None,
     };
-    let server = server.into_owned();
+    let from = from.into_owned();
     let server_message_type = match meta_iter.next() {
         Some(m) => String::from_utf8_lossy(m),
         None => return None,
@@ -63,7 +64,7 @@ fn parse_server_line(line_bytes: &[u8]) -> Option<::irc::IRCMessage> {
     };
     let time = get_time();
     let server_message = ::irc::IRCServerMessage {
-        server: server,
+        from: from,
         message: message,
         time: time.sec,
         target: target.into_owned(),
@@ -73,15 +74,12 @@ fn parse_server_line(line_bytes: &[u8]) -> Option<::irc::IRCMessage> {
     return Some(irc_message);
 }
 
-fn parse_comm_line(line_bytes: &[u8]) -> Option<::irc::IRCMessage> {
-    return None;
-}
-
 fn make_message(message_type: &str, message: &str, meta: &str) -> Option<::irc::IRCMessageType> {
     let stored_message = message.to_string();
     match message_type {
         "NOTICE" => Some(::irc::IRCMessageType::NOTICE(stored_message)),
         "MODE" => Some(::irc::IRCMessageType::MODE(meta.to_string())),
+        "PRIVMSG" => Some(::irc::IRCMessageType::PRIVMSG(message.to_string())),
         _ => {
             match message_type.parse::<u64>() {
                 Ok(i) => Some(::irc::IRCMessageType::INFO(i)),
