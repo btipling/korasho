@@ -11,3 +11,5 @@ It can:
 6. Easy to extend with additional functionality.
 
 It's also super fast and performant.
+
+A sample config is in the example directory.
