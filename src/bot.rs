@@ -104,14 +104,8 @@ impl<'a> Bot<'a> {
                 match str::from_utf8(p) {
                     Ok(p) => {
                         if p == self.config.admin_password {
-                            let from = message.from.clone();
-                            match from {
-                                ::irc::Entity::Client(c) => {
-                                    self.bot_state.admin = Some(c);
-                                    self.msg(message.target, message.from, "Authed!", conn_state);
-                                },
-                                _ => {},
-                            }
+                            self.set_auth(&message.from);
+                            self.msg(message.target, message.from, "Authed!", conn_state);
                             return;
                         }
                     },
@@ -130,6 +124,15 @@ impl<'a> Bot<'a> {
             return;
         }
         self.msg(message.target, message.from, ":)", conn_state);
+    }
+
+    pub fn set_auth(&mut self, entity: &::irc::Entity) {
+        match entity {
+            &::irc::Entity::Client(ref c) => {
+                self.bot_state.admin = Some(c.clone());
+            },
+            _ => {},
+        }
     }
 
     pub fn authed(&mut self, from: &::irc::Entity) -> bool {
