@@ -19,6 +19,7 @@ pub struct IRC<'a> {
 
 #[derive(Debug)]
 #[derive(Clone)]
+#[derive(PartialEq)]
 pub struct Client {
     pub nick: String,
     pub username: String,

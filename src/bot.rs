@@ -97,7 +97,15 @@ impl<'a> Bot<'a> {
                         match str::from_utf8(p) {
                             Ok(p) => {
                                 if p == self.config.admin_password {
-                                    self.msg(message.target, message.from, "Authed!", conn_state);
+                                    let from = message.from.clone();
+                                    match from {
+                                        ::irc::Entity::Client(c) => {
+                                            self.bot_state.admin = Some(c);
+                                            self.msg(message.target, message.from, "Authed!",
+                                                     conn_state);
+                                        },
+                                        _ => {},
+                                    }
                                     return;
                                 }
                             },
@@ -109,9 +117,30 @@ impl<'a> Bot<'a> {
                 self.msg(message.target, message.from, "Not authed. :(", conn_state);
                 return;
             },
-            "botsnack" => println!("Got a botsnack"),
+            "botsnack" => self.botsnack(message, conn_state),
             _ => println!("Unhandled command: {}", command),
         }
+    }
+
+    pub fn botsnack(&mut self, message: ::irc::IRCServerMessage,
+                    conn_state: &::irc::ConnectionState) {
+        if !self.authed(&message.from) {
+            return;
+        }
+        self.msg(message.target, message.from, ":)", conn_state);
+    }
+
+    pub fn authed(&mut self, from: &::irc::Entity) -> bool {
+        let from = match from {
+            &::irc::Entity::Client(ref c) => c,
+            _ => return false,
+        };
+        let admin = &self.bot_state.admin;
+        let admin = match admin {
+            &Some(ref a) => a,
+            _ => return false,
+        };
+        return *admin == *from;
     }
 }
 
