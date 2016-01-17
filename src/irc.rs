@@ -3,9 +3,9 @@ use time;
 
 #[derive(Default)]
 #[derive(Debug)]
-struct ConnectionState {
-    nick: String,
-    server_address: String,
+pub struct ConnectionState {
+    pub nick: String,
+    pub server_address: String,
     identified: bool,
 }
 
@@ -68,6 +68,7 @@ const NICK: &'static str = "NICK";
 const JOIN: &'static str = "JOIN";
 const USER: &'static str = "USER";
 const PONG: &'static str = "PONG";
+const PRIVMSG: &'static str = "PRIVMSG";
 
 impl<'a> IRC<'a> {
     pub fn run (&mut self) {
@@ -90,6 +91,9 @@ impl<'a> IRC<'a> {
         };
         match bot_job {
             ::bot::BotJob::Join(channel) => self.join(&channel),
+            ::bot::BotJob::PrivMsg((nick, message)) => {
+                self.priv_msg(&nick, &message);
+            },
         }
     }
 
@@ -111,7 +115,7 @@ impl<'a> IRC<'a> {
             IRCMessage::IRCServerMessage(m) => self.process_server_message(m),
             IRCMessage::IRCPing(p) => self.handle_ping(p),
         }
-        self.bot.handle_message(bot_message);
+        self.bot.handle_message(bot_message, &self.conn_state);
     }
 
     fn format_time(&mut self, seconds: i64) -> String {
@@ -149,6 +153,11 @@ impl<'a> IRC<'a> {
         self.user();
     }
 
+    fn priv_msg(&mut self, target: &str, message: &str) {
+        let message = format!("{target} :{message}", target=target, message=message);
+        self.send_command(PRIVMSG, &message);
+    }
+
     fn join(&mut self, channel: &str) {
         self.send_command(JOIN, channel);
     }
@@ -156,6 +165,7 @@ impl<'a> IRC<'a> {
     fn nick(&mut self) {
         let nick = self.config.nick.clone();
         self.send_command(NICK, &nick);
+        self.conn_state.nick = nick;
     }
 
     fn user(&mut self) {

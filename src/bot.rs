@@ -4,6 +4,7 @@ use std::str;
 #[derive(Clone)]
 pub enum BotJob {
     Join(String),
+    PrivMsg((String, String)),
 }
 
 #[derive(Debug)]
@@ -19,13 +20,14 @@ pub struct Bot<'a> {
 #[derive(Debug)]
 struct BotState {
     connected: bool,
+    admin: Option<::irc::Client>,
 }
 
-
 impl<'a> Bot<'a> {
-    pub fn handle_message(&mut self, message: ::irc::IRCMessage) {
+    pub fn handle_message(&mut self, message: ::irc::IRCMessage,
+                          conn_state: &::irc::ConnectionState) {
         match message {
-            ::irc::IRCMessage::IRCServerMessage(m) => self.process_server_message(m),
+            ::irc::IRCMessage::IRCServerMessage(m) => self.process_server_message(m, conn_state),
             _ => {},
         }
     }
@@ -39,10 +41,13 @@ impl<'a> Bot<'a> {
 
     }
 
-    pub fn process_server_message(&mut self, message: ::irc::IRCServerMessage) {
+    pub fn process_server_message(&mut self, message: ::irc::IRCServerMessage,
+                                 conn_state: &::irc::ConnectionState) {
         let message_data = message.message.clone();
         match message_data {
-            ::irc::IRCMessageType::PRIVMSG(m) => self.handle_privmsg(&m[..], message),
+            ::irc::IRCMessageType::PRIVMSG(m) => {
+                self.handle_privmsg(&m[..], message, conn_state);
+            },
             ::irc::IRCMessageType::INFO(i) => {
                 if i > 10 && !self.bot_state.connected {
                     self.bot_state.connected = true;
@@ -55,23 +60,55 @@ impl<'a> Bot<'a> {
         }
     }
 
-    pub fn handle_privmsg(&mut self, privmsg: &[u8], message: ::irc::IRCServerMessage) {
-        println!("Got a private message {:?} {:?}", privmsg, message);
+    pub fn msg(&mut self, target: String, from: ::irc::Entity, message: &str,
+               conn_state: &::irc::ConnectionState) {
+        let client = match from {
+            ::irc::Entity::Client(c) => c,
+            _ => return,
+        };
+        let mut nick = target;
+        if &conn_state.nick == &nick {
+            nick = client.nick.clone();
+        }
+        let message = message.to_string();
+        self.job_queue.push(BotJob::PrivMsg((nick, message)));
+    }
+
+    pub fn handle_privmsg(&mut self, privmsg: &[u8], message: ::irc::IRCServerMessage,
+                          conn_state: &::irc::ConnectionState) {
         if privmsg[0] != self.config.command_byte {
             return;
         }
         let command_bytes = &privmsg[1..privmsg.len()];
-        println!("Got a command byte from {:?} {:?}", command_bytes, message.from);
         let mut command_iter = command_bytes.splitn(2, |x| *x == b' ');
         let command = match command_iter.next() {
             Some(c) => c,
             None => return,
         };
-        let command: &str = match str::from_utf8(command) {
+        let command = match str::from_utf8(command) {
             Ok(c) => c,
             _ => return,
         };
+        let rest = command_iter.next();
         match command {
+            "auth" => {
+                match rest {
+                    Some(p) => {
+                        match str::from_utf8(p) {
+                            Ok(p) => {
+                                if p == self.config.admin_password {
+                                    self.msg(message.target, message.from, "Authed!", conn_state);
+                                    return;
+                                }
+                            },
+                            _ => {},
+                        };
+                    },
+                    _ => {},
+                }
+                self.msg(message.target, message.from, "Not authed. :(", conn_state);
+                return;
+            },
             "botsnack" => println!("Got a botsnack"),
             _ => println!("Unhandled command: {}", command),
         }
@@ -85,6 +122,7 @@ pub fn new<'a>(config: &'a ::config::Config, server: ::config::Server) -> Bot {
         job_queue: Vec::new(),
         bot_state: BotState {
             connected: false,
+            admin: None,
         },
     }
 }
