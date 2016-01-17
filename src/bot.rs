@@ -91,35 +91,37 @@ impl<'a> Bot<'a> {
         };
         let rest = command_iter.next();
         match command {
-            "auth" => {
-                match rest {
-                    Some(p) => {
-                        match str::from_utf8(p) {
-                            Ok(p) => {
-                                if p == self.config.admin_password {
-                                    let from = message.from.clone();
-                                    match from {
-                                        ::irc::Entity::Client(c) => {
-                                            self.bot_state.admin = Some(c);
-                                            self.msg(message.target, message.from, "Authed!",
-                                                     conn_state);
-                                        },
-                                        _ => {},
-                                    }
-                                    return;
-                                }
-                            },
-                            _ => {},
-                        };
-                    },
-                    _ => {},
-                }
-                self.msg(message.target, message.from, "Not authed. :(", conn_state);
-                return;
-            },
+            "auth" => self.auth(message, rest, conn_state),
             "botsnack" => self.botsnack(message, conn_state),
             _ => println!("Unhandled command: {}", command),
         }
+    }
+
+    pub fn auth(&mut self, message: ::irc::IRCServerMessage, args: Option<&[u8]>,
+                conn_state: &::irc::ConnectionState) {
+        match args {
+            Some(p) => {
+                match str::from_utf8(p) {
+                    Ok(p) => {
+                        if p == self.config.admin_password {
+                            let from = message.from.clone();
+                            match from {
+                                ::irc::Entity::Client(c) => {
+                                    self.bot_state.admin = Some(c);
+                                    self.msg(message.target, message.from, "Authed!", conn_state);
+                                },
+                                _ => {},
+                            }
+                            return;
+                        }
+                    },
+                    _ => {},
+                };
+            },
+            _ => {},
+        }
+        self.msg(message.target, message.from, "Not authed. :(", conn_state);
+        return;
     }
 
     pub fn botsnack(&mut self, message: ::irc::IRCServerMessage,
